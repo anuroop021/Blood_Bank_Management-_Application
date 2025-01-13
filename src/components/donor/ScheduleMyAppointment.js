@@ -1,117 +1,146 @@
-import React, { Component } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Navigate } from 'react-router-dom';
 import '../../styles/donorStyles/ScheduleMyAppointment.css';
 
-class ScheduleMyAppointment extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      date: '',
-      time: '',
-      address: '',
-      errorMessage: '',
-      successMessage: '',
-      isLoggedIn: true,
-    };
-  }
+const ScheduleMyAppointment = () => {
+  const [formData, setFormData] = useState({
+    date: '',
+    timeSlot: '',
+    address: '',
+  });
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
 
-  async componentDidMount() {
-    try {
-      const response = await axios.get('http://localhost:5000/api/donor/profile', {
-        withCredentials: true, 
-      });
+  useEffect(() => {
+    validateSession();
+  }, []);
 
-      if (response.status === 200) {
-        console.log('Session validated. User is logged in.');
-        this.setState({ isLoggedIn: true });
-      }
-    } catch (error) {
-      console.error('Session validation failed:', error.response?.data?.message || error.message);
-      this.setState({
-        isLoggedIn: false,
-        errorMessage: 'Session expired. Please log in again.',
-      });
+  useEffect(() => {
+    if (formData.date) {
+      fetchAvailableSlots();
     }
-  }
+  }, [formData.date]);
 
-  handleChange = (e) => {
-    this.setState({ [e.target.name]: e.target.value });
+  const validateSession = async () => {
+    try {
+      await axios.get('http://localhost:5000/api/donor/profile', {
+        withCredentials: true,
+      });
+    } catch (error) {
+      console.error('Session validation failed:', error);
+      setIsLoggedIn(false);
+      setErrorMessage('Session expired. Please log in again.');
+    }
   };
 
-  handleSubmit = async (e) => {
-    e.preventDefault();
-    const { date, time, address } = this.state;
+  const fetchAvailableSlots = async () => {
+    try {
+      const response = await axios.get(
+        `http://localhost:5000/api/donor/available-slots?date=${formData.date}`,
+        { withCredentials: true }
+      );
+      setAvailableSlots(response.data);
+    } catch (error) {
+      console.error('Error fetching slots:', error);
+      setErrorMessage('Failed to fetch available time slots');
+    }
+  };
 
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    setErrorMessage('');
+    setSuccessMessage('');
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     try {
       const response = await axios.post(
         'http://localhost:5000/api/donor/appointment',
-        { date, time, address },
+        formData,
         { withCredentials: true }
       );
 
-      if (response.status === 201) {
-        console.log('Appointment scheduled successfully:', response.data);
-        this.setState({
-          successMessage: 'Appointment scheduled successfully!',
-          errorMessage: '',
-        });
-      }
+      setSuccessMessage(response.data.message);
+      setFormData({ date: '', timeSlot: '', address: '' });
+      setErrorMessage('');
     } catch (error) {
-      console.error('Error scheduling appointment:', error.response?.data?.message || error.message);
-      this.setState({
-        errorMessage: error.response?.data?.message || 'Failed to schedule the appointment.',
-        successMessage: '',
-      });
+      setErrorMessage(error.response?.data?.message || 'Failed to schedule appointment');
+      setSuccessMessage('');
     }
   };
 
-  render() {
-    const { date, time, address, errorMessage, successMessage, isLoggedIn } = this.state;
+  if (!isLoggedIn) {
+    return <Navigate replace to="/donor/DonorLogin" />;
+  }
 
-    if (!isLoggedIn) {
-      console.log('User not logged in, redirecting to login.');
-      return <Navigate replace to="/donor/DonorLogin" />;
-    }
+  const today = new Date().toISOString().split('T')[0];
 
-    return (
-      <div className="schedule-appointment-container">
-        <form className="schedule-appointment-form" onSubmit={this.handleSubmit}>
-          <h2>Schedule an Appointment</h2>
-          {errorMessage && <p className="error-message">{errorMessage}</p>}
-          {successMessage && <p className="success-message">{successMessage}</p>}
-          <label htmlFor="appointment-date">Date:</label>
+  return (
+    <div className="schedule-appointment-container">
+      <form className="schedule-appointment-form" onSubmit={handleSubmit}>
+        <h2>Schedule an Appointment</h2>
+        
+        {errorMessage && <p className="error-message">{errorMessage}</p>}
+        {successMessage && <p className="success-message">{successMessage}</p>}
+        
+        <div className="form-group">
+          <label htmlFor="date">Date:</label>
           <input
             type="date"
-            id="appointment-date"
+            id="date"
             name="date"
-            value={date}
-            onChange={this.handleChange}
+            value={formData.date}
+            onChange={handleChange}
+            min={today}
             required
           />
-          <label htmlFor="appointment-time">Time:</label>
-          <input
-            type="time"
-            id="appointment-time"
-            name="time"
-            value={time}
-            onChange={this.handleChange}
-            required
-          />
-          <label htmlFor="appointment-address">Address:</label>
+        </div>
+
+        {formData.date && (
+          <div className="form-group">
+            <label htmlFor="timeSlot">Time Slot:</label>
+            <select
+              id="timeSlot"
+              name="timeSlot"
+              value={formData.timeSlot}
+              onChange={handleChange}
+              required
+            >
+              <option value="">Select a time slot</option>
+              {availableSlots.map(slot => (
+                <option 
+                  key={slot.slot} 
+                  value={slot.slot}
+                  disabled={!slot.available}
+                >
+                  {slot.slot} 
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <div className="form-group">
+          <label htmlFor="address">Address:</label>
           <input
             type="text"
-            id="appointment-address"
+            id="address"
             name="address"
-            value={address}
-            onChange={this.handleChange}
+            value={formData.address}
+            onChange={handleChange}
             required
           />
-          <button type="submit">Schedule</button>
-        </form>
-      </div>
-    );
-  }
-}
+        </div>
+
+        <button type="submit">Schedule Appointment</button>
+      </form>
+    </div>
+  );
+};
 
 export default ScheduleMyAppointment;

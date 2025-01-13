@@ -11,6 +11,8 @@ router.post('/logout', auth.isLogin, donorController.logoutDonor);
 
 router.get('/profile', auth.isLogin, donorController.getDonorProfile);  
 router.post('/profile/update', auth.isLogin, donorController.updateDonorProfile);  
+router.get('/available-slots', auth.isLogin, donorController.getAvailableTimeSlots);
+
 router.post('/appointment', auth.isLogin, donorController.scheduleAppointment); 
 
 

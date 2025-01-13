@@ -111,7 +111,23 @@ const DonorSchema = new mongoose.Schema({
 });
 
 
-// Schedule Schema
+const TimeSlotSchema = new mongoose.Schema({
+  date: {
+    type: Date,
+    required: true
+  },
+  slot: {
+    type: String,
+    required: true,
+    enum: ['9-10', '10-11', '11-12', '12-13', '14-15', '15-16', '16-17', '17-18', '18-19', '19-20']
+  },
+  bookedCount: {
+    type: Number,
+    default: 0,
+    max: 15
+  }
+});
+
 const ScheduleSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -126,9 +142,10 @@ const ScheduleSchema = new mongoose.Schema({
     type: Date,
     required: true
   },
-  time: {
+  timeSlot: {
     type: String,
-    required: true
+    required: true,
+    enum: ['9-10', '10-11', '11-12', '12-13', '14-15', '15-16', '16-17', '17-18', '18-19', '19-20']
   },
   address: {
     type: String,
@@ -137,10 +154,15 @@ const ScheduleSchema = new mongoose.Schema({
   doctor: {
     type: String,
     default: ""
-  },
+  }
 });
-
 const DonorModel = mongoose.model("Donor", DonorSchema);
+const TimeSlotModel = mongoose.model("TimeSlot", TimeSlotSchema);
 const ScheduleModel = mongoose.model("Schedule", ScheduleSchema);
 
-module.exports = { DonorModel, ScheduleModel };
+module.exports = { DonorModel, ScheduleModel, TimeSlotModel };
+
+
+
+
+
